@@ -31,11 +31,19 @@ async function run() {
 
         const dataBase = client.db("smart_db");
         const productsCollection = dataBase.collection("products");
+        const bidsCollection = dataBase.collection("bids");
 
         // all api's here
 
         app.get("/products", async (req, res) => {
-            const cursor = productsCollection.find();
+            console.log(req.query);
+            const email = req.query.email;
+            const query = {};
+            if (email) {
+                query.email = email;
+            }
+
+            const cursor = productsCollection.find(query);
             const result = await cursor.toArray();
             res.send(result);
         });
@@ -72,6 +80,39 @@ async function run() {
             const id = req.params.id;
             const query = {_id: new ObjectId(id)};
             const result = await productsCollection.deleteOne(query);
+            res.send(result);
+        });
+
+        // bids api's
+
+        app.get("/bids", async (req, res) => {
+            const email = req.query.email;
+            const query = {};
+            if (email) {
+                query.buyer_email = email;
+            }
+            const cursor = bidsCollection.find(query);
+            const result = await cursor.toArray();
+            res.send(result);
+        });
+
+        app.get("/bids/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = {_id: id};
+            const result = await bidsCollection.findOne(query);
+            res.send(result);
+        });
+
+        app.post("/bids", async (req, res) => {
+            const newBids = req.body;
+            const result = await bidsCollection.insertOne(newBids);
+            res.send(result);
+        });
+
+        app.delete("/bids/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = {_id: id};
+            const result = await bidsCollection.deleteOne(query);
             res.send(result);
         });
 
