@@ -22,24 +22,45 @@ const logger = (req, res, next) => {
     next();
 };
 
-const verifyFirebaseToken = async (req, res, next) => {
-    // console.log("verify firebase", req.headers.authorization);
-    if (!req.headers.authorization) {
-        return res.status(401).send({message: "Unauthorized access"});
-    }
-    const token = req.headers.authorization.split(" ")[1];
-    if (!token) {
-        return res.status(401).send({message: "Unauthorized access"});
+// const verifyFirebaseToken = async (req, res, next) => {
+//     // console.log("verify firebase", req.headers.authorization);
+//     if (!req.headers.authorization) {
+//         return res.status(401).send({message: "Unauthorized access"});
+//     }
+//     const token = req.headers.authorization.split(" ")[1];
+//     if (!token) {
+//         return res.status(401).send({message: "Unauthorized access"});
+//     }
+
+//     // verify the token
+//     try {
+//         const userInfo = await admin.auth().verifyIdToken(token);
+//         req.token_email = userInfo.email;
+//         console.log("after token validation", userInfo);
+//         next();
+//     } catch {
+//         return res.status(401).send({message: "Unauthorized access"});
+//     }
+// };
+
+const verifyFirebaseAccessToken = async (req, res, next) => {
+    const authorization = req.headers.authorization;
+    if (!authorization) {
+        res.status(401).send("Unauthorized User");
     }
 
-    // verify the token
+    const token = authorization.split(" ")[1];
+    if (!token) {
+        res.status(401).send("Unauthorized User");
+    }
+
     try {
-        const userInfo = await admin.auth().verifyIdToken(token);
-        req.token_email = userInfo.email;
-        console.log("after token validation", userInfo);
+        const decode = await admin.auth().verifyIdToken(token);
+        console.log("decoded", decode);
+        req.token_email = decode.email;
         next();
     } catch {
-        return res.status(401).send({message: "Unauthorized access"});
+        return res.status(401).send("Unauthorized");
     }
 };
 
@@ -118,7 +139,7 @@ async function run() {
             res.send(result);
         });
 
-        app.post("/products", async (req, res) => {
+        app.post("/products", verifyFirebaseAccessToken, async (req, res) => {
             const newProducts = req.body;
             const result = await productsCollection.insertOne(newProducts);
             res.send(result);
@@ -147,7 +168,7 @@ async function run() {
 
         // bids api's
 
-        app.get("/bids", logger, verifyFirebaseToken, async (req, res) => {
+        app.get("/bids", logger, verifyFirebaseAccessToken, async (req, res) => {
             // console.log("headers", req.headers);
             const email = req.query.email;
             const query = {};
@@ -169,7 +190,7 @@ async function run() {
             res.send(result);
         });
 
-        app.get("/products/bids/:productId", verifyFirebaseToken, async (req, res) => {
+        app.get("/products/bids/:productId", verifyFirebaseAccessToken, async (req, res) => {
             const productId = req.params.productId;
             const query = {product: productId};
             const cursor = bidsCollection.find(query).sort({bid_price: 1});
